@@ -1,0 +1,20 @@
+<html>
+    <body>
+        <h1>sven rules</h1>
+    </body>
+
+
+    <script>
+        function contactBackend(){
+            console.log("start backend call");
+            fetch("/api/test/uff")
+            .then((resp)=> resp.json())
+            .then((resp)=>console.log("fullPath", resp))
+
+            fetch("/api")
+            .then((resp)=> resp.json())
+            .then((resp)=>console.log("api alone",resp))
+        }
+        contactBackend();
+    </script>
+</html>
