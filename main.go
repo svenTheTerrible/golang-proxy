@@ -27,6 +27,8 @@ func main() {
 		port = "3000"
 	}
 
+	requiredSecret := os.Getenv("PROXY_SECRET")
+
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 
 	// Skip TLS verification for self-signed backend certificates.
@@ -36,10 +38,15 @@ func main() {
 		},
 	}
 
-	// Customize director to preserve important request metadata.
-	originalDirector := proxy.Director
-	proxy.Director = func(r *http.Request) {
-		originalDirector(r)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requiredSecret != "" {
+			providedSecret := r.Header.Get("X-API-Secret")
+			if providedSecret == "" || providedSecret != requiredSecret {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, "Forbidden: invalid or missing secret")
+				return
+			}
+		}
 
 		// Preserve the original Host header so backend can see where requests came from.
 		if r.Host == "" || r.Host == targetURL.Host {
@@ -60,7 +67,9 @@ func main() {
 		if origin := r.Header.Get("Origin"); origin != "" {
 			r.Header.Set("Origin", origin)
 		}
-	}
+
+		proxy.ServeHTTP(w, r)
+	})
 
 	// Optional: log errors from upstream.
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
@@ -71,7 +80,7 @@ func main() {
 
 	addr := ":" + port
 	log.Printf("starting proxy on %s -> %s (TLS verify disabled)", addr, targetURL.String())
-	if err := http.ListenAndServe(addr, proxy); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
