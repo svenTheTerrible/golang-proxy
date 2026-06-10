@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  proxy:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PROXY_TARGET_URL=http://127.0.0.1:8080   # set to your backend
+      - SERVER_PORT=3000
